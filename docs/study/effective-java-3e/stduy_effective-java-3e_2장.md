@@ -1,0 +1,221 @@
+---
+layout: default
+title: 2장 객체 생성과 파괴
+parent: Effective Java 3E
+grand_parent: 스터디
+nav_order: 1
+toc: true
+---
+
+
+# 아이템 1 생성자 대신 정적 팩터리 메서드를 고려하라
+
+클라이언트가 클래스의 인스턴스를 얻는 전통적인 수단은 public 생성자다.
+
+**클래스는 생성자와 별도로 정적 팩터리 메서드(static factory method)를 제공할 수 있다.**
+
+```java
+public static Boolean valueOf(boolean b){
+	return b ? Boolean.TRUE : Boolean.FALSE;
+}
+```
+
+위 코드는 boolean의 Wrapper class인 Boolean에서 발췌한 간단한 예시다.
+
+기본 타입인 boolean 값을 받아 Boolean 객체 참조로 변환한다.
+
+## 장점
+
+1. **이름을 가질 수 있다. - 메서드 이기 때문**
+생성자에 넘기는 매개변수와 생성자 자체만으로는 반환될 객체의 특성을 제대로 설명하지 못한다.
+하지만, 정적 팩터리는 메소드 명만 잘 지으면 반환될 객체의 특성을 쉽게 묘사할 수 있다.
+2. **호출될 때마다 인스턴스를 새로 생성하지는 않아도 된다. - static 이기 때문**
+불변 클래스는 인스턴스를 미리 만들거나 새로 생성한 인스턴스를 캐싱하여 재활용하는 식으로 불필요한 객체 생성을 피할 수 있다.
+대표적으로 Boolean.valueOf(boolean) 메서드는 객체를 아예 생성하지 않는다.
+- 이 방법은 생성 비용이 큰 객체가 자주 요청되는 상황이라면 성능을 상당히 끌어올려 준다.
+비슷한 패턴으로 **플라이웨이트 패턴(Flyweight Pattern)**이 존재한다.
+3. **반환 타입의 하위 타입 객체를 반환할 수 있는 능력이 있다. - 다형성**
+반환할 객체의 클래스를 자유롭게 선택할 수 있게 하는 ‘엄청난 유연성’을 제공한다.
+4. **입력 매개변수에 따라 매번 다른 클래스의 개체를 반환할 수 있다. - 다형성**
+반환 타입의 하위 타입이기만 하면 어떤 클래스의 객체를 반환하든 상관 없다.
+5. **정적 팩터리 메서드를 작성하는 시점에는 반환할 객체의 클래스가 존재하지 않아도 된다.**
+서비스 제공자 프레임워크를 만드는 근간 ex) JDBC
+서비스 제공자 3개의 핵심 컴포넌트
+    1. 서비스 인터페이스 : 구현체의 동작을 정의
+    2. 제공자 등록 API : 제공자가 구현체를 등록
+    3. 서비스 접근 API : 클라이언트가 서비스의 인스턴스를 얻을 때 사용
+    
+    Connection = 서비스 인터페이스
+    DriverManager.registerDriver = 제공자 등록 API
+    
+    Driver = 서비스 제공자 인터페이스
+    
+    브리지 패턴(Bridge Pattern), 의존 객체 주입(Dependency Injection) 프레임워크도 강력한 서비스 제공자이다.
+    
+
+## 단점
+
+1. **상속을 하려면 public이나 protected 생성자가 필요하니 정적 팩터리 메서드만 제공하면 하위 클래스를 만들 수 없다.**
+2. **정적 팩터리 메서드는 프로그래머가 찾기 어렵다.**
+생성자 처럼 API 설명에 드러나지 않으니 사용자는 정적 팩터리 메서드 방식 클래스를 인스턴스화 할 방법을 알아내야 한다.
+**정적 팩터리 메서드에 흔히 사용하는 명명 방식**
+    1. **from** : 매개 변수를 하나 받아 해당 타입의 인스턴스를 반환하는 형변환 메서드
+        
+        ```java
+        Date d = Date.from(instant);
+        ```
+        
+    2. **of** : 여러 매개변수를 받아 적절한 타입의 인스턴스를 반환하는 집계 메서드
+        
+        ```java
+        Set<Rank> faceCards = EnumSet.of(JACK, QUEEN, KING);
+        ```
+        
+    3. **valueOf** : from과 of의 더 자세한 버전
+        
+        ```java
+        BigInteger prime = BigInteger.valueOf(Integer.MAX_VALUE);
+        ```
+        
+    4. **instance, getInstance** : 매개변수로 명시한 인스턴스를 반환 단, 같은 인스턴스임은 보장X
+        
+        ```java
+        StackWalker luke = StackWalker.getInstance(options);
+        ```
+        
+    5. **create, newInstance** : (d)와 같지만 매번 새로운 인스턴스를 생성함을 보장
+        
+        ```java
+        Object newArray = Array.newInstance(classObject, arrayLen);
+        ```
+        
+    6. **getType** : (d)와 같으나 생성할 클래스가 아닌다른 클래스에서 팩터리 메서드를 정의
+        
+        ```java
+        FileStore fs = Files.getFileStore(path);
+        ```
+        
+    7. **newType** : (e)와 같으나 생성할 클래스가 아닌다른 클래스에서 팩터리 메서드를 정의
+        
+        ```java
+        BufferedReader br = Files.newBufferedReader(path);
+        ```
+        
+    8. **type** : (f), (g)의 간결한 버전
+        
+        ```java
+        List<Complaint> litany = Collections.list(legacyLitany);
+        ```
+
+<hr>
+# 아이템 2 생성자에 매개변수가 많다면 빌더를 고려하라
+
+**정적 팩터리와 생성자에는 똑같은 제약이 존재하는데 이는 선택적 매개변수가 많을 때 적절히 대응하기가 어렵다는 것이다.**
+
+```java
+NutritionFacts cocaCola = new NutritionFacts
+	.Builder(240, 8)
+	.calories(100)
+	.sodium(35)
+	.carbohydrate(27)
+	.build()
+```
+
+빌더 패턴은 (파이썬과 스칼라에 있는) 명명된 선택적 매개변수를 흉내 낸 것이다.
+
+빌더 패턴은 계층적으로 설계된 클래스와 함께 쓰기에 좋다.
+
+```java
+public abstract class Pizza {
+    public enum Topping { HAM, MUSHROOM, ONION, PEPPER, SAUSAGE }
+    final Set<Topping> toppings;
+
+    abstract static class Builder<T extends Builder<T>> {
+        EnumSet<Topping> toppings = EnumSet.noneOf(Topping.class);
+        public T addTopping(Topping topping) {
+            toppings.add(Objects.requireNonNull(topping));
+            return self();
+        }
+
+        abstract Pizza build();
+
+        // 하위 클래스는 이 메서드를 재정의(overriding)하여
+        // "this"를 반환하도록 해야 한다.
+        protected abstract T self();
+    }
+    
+    Pizza(Builder<?> builder) {
+        toppings = builder.toppings.clone(); // 아이템 50 참조
+    }
+}
+```
+
+Pizza.Builder 클래스는 재귀적 타입 한정을 이용하는 제네릭 타입이다.
+
+```java
+public class Calzone extends Pizza {
+    private final boolean sauceInside;
+
+    public static class Builder extends Pizza.Builder<Builder> {
+        private boolean sauceInside = false; // 기본값
+
+        public Builder sauceInside() {
+            sauceInside = true;
+            return this;
+        }
+
+        @Override public Calzone build() {
+            return new Calzone(this);
+        }
+
+        @Override protected Builder self() { return this; }
+    }
+
+    private Calzone(Builder builder) {
+        super(builder);
+        sauceInside = builder.sauceInside;
+    }
+
+    @Override public String toString() {
+        return String.format("%s로 토핑한 칼초네 피자 (소스는 %s에)",
+                toppings, sauceInside ? "안" : "바깥");
+    }
+}
+```
+
+```java
+public class NyPizza extends Pizza {
+    public enum Size { SMALL, MEDIUM, LARGE }
+    private final Size size;
+
+    public static class Builder extends Pizza.Builder<Builder> {
+        private final Size size;
+
+        public Builder(Size size) {
+            this.size = Objects.requireNonNull(size);
+        }
+
+        @Override public NyPizza build() {
+            return new NyPizza(this);
+        }
+
+        @Override protected Builder self() { return this; }
+    }
+
+    private NyPizza(Builder builder) {
+        super(builder);
+        size = builder.size;
+    }
+
+    @Override public String toString() {
+        return toppings + "로 토핑한 뉴욕 피자";
+    }
+}
+```
+
+## 핵심
+
+```java
+**생성자나 정적 팩터리가 처리해야 할 매개변수가 많다면 빌더 패턴을 선택하는 게 더 낫다.**
+매개변수 중 다수가 필수가 아니거나 같은 타입이면 특히 더 그렇다. 빌더는 점층적 생성자보다 클라이언트 코드를 읽고 쓰기가 훨씬 간결하고, 자바빈즈보다 훨씬 안전하다.
+```
