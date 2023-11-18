@@ -412,3 +412,81 @@ public class RomanNumerals {
 	}
 }
 ```
+<hr>
+# 아이템 7 다 쓴 객체 참조를 해제하라
+
+C/C++ 처럼 메모리를 직접 관리하다 Java로 오면 GC가 어느정도 해준다.
+
+흔히 하는 실수가 “Java는 메모리 관리 필요 없어” 라고 하는 사람이 있다.
+결코 사실이 아니다.
+
+```java
+public class Stack {
+    private Object[] elements;
+    private int size = 0;
+    private static final int DEFAULT_INITIAL_CAPACITY = 16;
+
+    public Stack() {
+        elements = new Object[DEFAULT_INITIAL_CAPACITY];
+    }
+
+    public void push(Object e) {
+        ensureCapacity();
+        elements[size++] = e;
+    }
+
+    public Object pop() {
+        if (size == 0)
+            throw new EmptyStackException();
+        return elements[--size];
+    }
+
+    /**
+     * 원소를 위한 공간을 적어도 하나 이상 확보한다.
+     * 배열 크기를 늘려야 할 때마다 대략 두 배씩 늘린다.
+     */
+    private void ensureCapacity() {
+        if (elements.length == size)
+            elements = Arrays.copyOf(elements, 2 * size + 1);
+    }
+
+    public static void main(String[] args) {
+        Stack stack = new Stack();
+        for (String arg : args)
+            stack.push(arg);
+
+        while (true)
+            System.err.println(stack.pop());
+    }
+}
+```
+
+테스트를 해도 별 문제 없이 동작한다. 하지만, 큰 문제가 존재한다.
+**”메모리 누수”** 이다.
+이 코드에서는 스택에서 꺼내진 객체들을 가비지 컬렉터가 회수하지 않는다.
+
+```java
+public Object pop() {
+	if (size == 0)
+		throw new EmptyStackException();
+	Object result = elements[--size];
+	elements[size] = null; // 다 쓴 참조 해제
+	return result;
+}
+```
+
+다 쓴 참조를 null로 처리하면 다른 이점도 존재한다.
+
+만약 null 처리한 참조를 실수로 사용하게 된다면 NullPointerException을 던지며 종료한다.
+
+→ 처리하지 않았으면 아무 이상 없이 잘못된 일을 수행할 것
+
+**자기 메모리를 직접 관리하는 클래스라면 프로그래머는 항시 메모리 누수에 주의해야 한다.**
+
+**캐시 역시 메모리 누수를 일으키는 주범이다.**
+
+## 핵심
+
+```java
+메모리 누수는 겉으로 잘 드러나지 않아 시스템에 수년간 잠복하는 사례도 있다. 이런 누수는 철저한 코드 리뷰나 힙 프로파일러 같은 디버깅 도구를 동원해야만 발견되기도 한다. 그래서 이런 종류의 문제는 예방법을 익혀두는 것이 매우 중요하다.
+```
