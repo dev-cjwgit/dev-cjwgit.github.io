@@ -373,3 +373,42 @@ public class SpellChecker {
 클래스가 내부적으로 하나 이상의 자원에 의존하고, 그 자원이 클래스 동작에 영향을 준다면 싱글턴과 정적 유틸리티 클래스는 사용하지 않는 것이 좋다. 이 자원들을 클래스가 직접 만들게 해서도 안된다. 대신 필요한 자원을 (혹은 그 자원을 만들어주는 팩터리를) 생성자에 (혹은 정적 팩터리나 빌더에) 넘겨주자.
 의존 객체 주입이라 하는 이 기법은 클래스의 유연성, 재사용성, 테스트 용이성을 기막히게 개선해준다.
 ```
+
+<hr>
+# 아이템 6 불필요한 객체 생성을 피하라
+
+똑같은 기능의 객체를 매번 생성하기보다는 객체 하나를 재사용 하는 편이 나을 때가 많다.
+
+```java
+String s = new String("bikini"); // 따라 하지 말 것!
+```
+
+이러한 문장이 for 혹은 빈번히 호출되는 메서드 안에 있다면 쓸데없는 String 인스턴스가 수백만 개 만들어질 수 있다.
+
+```java
+String s = "bikini";
+```
+
+이 방식을 사용한다면 같은 가상 머신 안에서 이와 똑같은 문자열 리터럴을 사용하는 모든 코드는 같은 객체를 재사용함이 보장된다.
+
+```java
+static boolean isRomanNumeral(String s) {
+	return s.matches("^(?=.)M*(C[MD]|D?C{0,3})" + "(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$");
+}
+```
+
+이 방식의 문제는 String.matches 메소드를 이용한다. 이 인스턴스는 한 번 쓰고 버려져서 바로 GC의 대상이 된다.
+
+캐싱을 이용하여 성능을 올려보자
+
+```java
+public class RomanNumerals {
+	private static final Pattern ROMAN = Pattern
+												.compile("^(?=.)M*(C[MD]|D?C{0,3})" +
+																 "(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$");
+	
+	static boolean isRomanNumeral(String s) {
+		return ROMAN.matcher(s).matches();
+	}
+}
+```
